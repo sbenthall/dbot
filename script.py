@@ -1,6 +1,17 @@
-import bs4
-import urllib2
+import urllib2, bs4,time, datetime
 import pandas as pd
+import numpy as np
+
+
+def get_date(df):
+    df['date'] = ''
+    for entry in df['date0'].index:
+        if df['date0'][entry] not in ('', 'no date'):
+            date_list = df['date0'][entry].split()
+            date = str(date_list[1] + ' ' + date_list[2].strip(',') + ' ' + date_list[3])
+            date_structure = time.strptime(date, "%B %d %Y")
+            df['date'][entry] = datetime.date(date_structure[0], date_structure[1], date_structure[2])
+    return df
 
 
 def main():
@@ -54,6 +65,11 @@ def main():
             except:
                 df.date0[item] = 'no date'
 
+    df = get_date(df)
+    #df['date'] = df['date'].astype(np.datetime64)
+
+    df = df.drop_duplicates(cols = ['title', 'date0', 'date1', 'date2'])
+    #df.sort(columns = 'date', ascending = True)
     return df
 
 
