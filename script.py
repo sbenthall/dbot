@@ -21,24 +21,16 @@ def main():
     # Pull RSS data
     rss_data = bs4.BeautifulSoup(urllib2.urlopen(rss).read())
 
-    # Pull title and url data
-    titles = rss_data.find_all('title')
-    urls = rss_data.find_all('link')
-
-    # Check equality ?
-    len(titles)
-    len(urls)
+    # Pull items
+    items = rss_data.find_all('item')
 
     # Listify
-    t_list = list(titles)
-    u_list = list(urls)
-
-    # Remove tags
     title_list = []
-    url_list   = []
-    for entry in range(0, len(t_list)):
-        title_list.append(str(t_list[entry])[7 : -8])
-        url_list.append(str(u_list[entry])[6 : -7])
+    url_list = []
+    for item in items:
+        if int(item.find_next('pubdate').text[12:17]) > 2013:
+            title_list.append(item.find_next('title').text)
+            url_list.append(item.find_next('link').text)
 
     # Dictionary (how to ensure 1-to-1 match?)
     rss_dict = {'title' : title_list, 'url' : url_list}
