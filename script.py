@@ -1,4 +1,4 @@
-import urllib2, bs4,time, datetime
+import urllib2, bs4, time, datetime, arrow
 import pandas as pd
 import numpy as np
 
@@ -11,6 +11,8 @@ def get_date(df):
             date = str(date_list[1] + ' ' + date_list[2].strip(',') + ' ' + date_list[3])
             date_structure = time.strptime(date, "%B %d %Y")
             df['date'][entry] = datetime.date(date_structure[0], date_structure[1], date_structure[2])
+        else:
+            df['date'][entry] = datetime.date(2000, 1, 1)
     return df
 
 
@@ -20,7 +22,7 @@ def main():
 
     # Pull RSS data
     rss_data = bs4.BeautifulSoup(urllib2.urlopen(rss).read())
-
+    
     # Pull items
     items = rss_data.find_all('item')
 
@@ -38,31 +40,38 @@ def main():
     # DataFrame
     df = pd.DataFrame(rss_dict)
 
-    # Dates
+    # Pull dates
     # How to determine, ahead-of-time, how many date entries there could be?
     df['date0'] = ''
     df['date1'] = ''
     df['date2'] = ''
+    df['date3'] = ''
+    df['date4'] = ''
     for item in df.url.index:
         if df.title[item] != 'Training Archive':
-            try:
-                event_url = df.url[item]
-                test_page = bs4.BeautifulSoup(urllib2.urlopen(event_url))
+            event_url = df.url[item]
+            test_page = bs4.BeautifulSoup(urllib2.urlopen(event_url))
 
-                # Date: handles multiple-entries
-                date_info = test_page.find_all('span', class_ = 'date-display-single')
-                for i in range(0, len(date_info)):
-                    col = 'date' + str(i)
+            # Pull content
+            content = test_page.find_all('div', class_ = 'span9')
+            date_info = content[0].find_all('span', class_ = 'date-display-single')
+
+            # Date: handles multiple-entries
+            for i in range(0, len(date_info)):
+                col = 'date' + str(i)
+                try:
                     df[col][item] =  date_info[i].text
-            except:
-                df.date0[item] = 'no date'
+                except:
+                    df[col][item] = ''
 
+    # Create date variable based on first date
     df = get_date(df)
-    #df['date'] = df['date'].astype(np.datetime64)
 
-    df = df.drop_duplicates(cols = ['title', 'date0', 'date1', 'date2'])
-    #df.sort(columns = 'date', ascending = True)
-    return df
+    # Remove duplicates
+    df = df.drop_duplicates(subset = ['title', 'date0', 'date1', 'date2'])
+    
+    # Sort
+    return df.sort(columns = 'date', ascending = False)
 
 
 
