@@ -1,32 +1,17 @@
-import urllib2, bs4, time, datetime, arrow
+import urllib2, bs4, datetime, random
+import ConfigParser, time, re, math, itertools, logging, os
+from twitter import Twitter, OAuth
 import pandas as pd
-import numpy as np
+import dateutil.parser as parser
 
 
-def get_date(df):
-    df['date'] = ''
-    for entry in df['date0'].index:
-        if df['date0'][entry] not in ('', 'no date'):
-            date_list = df['date0'][entry].split()
-            date = str(date_list[1] + ' ' + date_list[2].strip(',') + ' ' + date_list[3])
-            date_structure = time.strptime(date, "%B %d %Y")
-            df['date'][entry] = datetime.date(date_structure[0], date_structure[1], date_structure[2])
-        else:
-            df['date'][entry] = datetime.date(2000, 1, 1)
-    return df
-
-
-def main():
-    # Point to RSS
-    rss = "http://dlab.berkeley.edu/training/rss.xml"
-
-    # Pull RSS data
+def load_rss(user_rss):
+    rss = user_rss
     rss_data = bs4.BeautifulSoup(urllib2.urlopen(rss).read())
-    
-    # Pull items
-    items = rss_data.find_all('item')
+    return rss_data.find_all('item')
 
-    # Listify
+
+def df_rss(items):
     title_list = []
     url_list = []
     for item in items:
@@ -34,14 +19,11 @@ def main():
             title_list.append(item.find_next('title').text)
             url_list.append(item.find_next('link').text)
 
-    # Dictionary (how to ensure 1-to-1 match?)
     rss_dict = {'title' : title_list, 'url' : url_list}
+    return pd.DataFrame(rss_dict)
 
-    # DataFrame
-    df = pd.DataFrame(rss_dict)
 
-    # Pull dates
-    # How to determine, ahead-of-time, how many date entries there could be?
+def df_dates(df):
     df['date0'] = ''
     df['date1'] = ''
     df['date2'] = ''
@@ -63,15 +45,73 @@ def main():
                     df[col][item] =  date_info[i].text
                 except:
                     df[col][item] = ''
+    return df
 
-    # Create date variable based on first date
-    df = get_date(df)
 
-    # Remove duplicates
-    df = df.drop_duplicates(subset = ['title', 'date0', 'date1', 'date2'])
+def first_date(df):
+    df['date'] = ''
+    for entry in df['date0'].index:
+        if df['date0'][entry] not in ('', 'no date'):
+            date_list = df['date0'][entry].split()
+            df['date'][entry] = parser.parse(date_list[1] + ' ' + date_list[2] + ' ' + date_list[3]).date()
+    return df
+
+
+def twitter_message(line):
+    config= ConfigParser.ConfigParser()
+    config.read('/Users/JS/Code/DLab/config.cfg')
+
+    oauth = OAuth(config.get('OAuth','accesstoken'),
+                  config.get('OAuth','accesstokenkey'),
+                  config.get('OAuth','consumerkey'),
+                  config.get('OAuth','consumersecret'))
+
+    t = Twitter(auth=oauth)
+    t.statuses.update(status=line)
+
+
+def main():
+    url = 'http://dlab.berkeley.edu/training/rss.xml'
+    # Load RSS Content
+    items = load_rss(url)
+
+    # DataFrame: titles, URLs
+    df = df_rss(items)
+
+    # DataFrame: titles, URLs, date(s)
+    df = df_dates(df)
+
+    # DataFrame: date variable based on date0
+    df = first_date(df)
     
-    # Sort
-    return df.sort(columns = 'date', ascending = False)
+    # DataFrame: remove duplicates
+    df = df.drop_duplicates(subset = ['title', 'date0', 'date1', 'date2', 'date3', 'date4'])
+
+    # DataFrame: subset only records n days in the future
+    forward_days = 3
+    df = df[df['date'] == datetime.date.today() + datetime.timedelta(days=forward_days)].reset_index(drop=True)
+
+    # Message variables & dict
+    for i in df.title.index:
+        title = df['title'][i]
+        date = df['date'][i].strftime('%m/%d')
+        link = df['url'][i]
+        ########## TO DO: CHECK MESSAGE LENGTH ##########
+        message_dict = {
+        1 : str('Don\'t miss "' + title + '" happening on ' + date + '. Sign up now: ' + link), 
+        2 : str('Register for our upcoming workshop, "' + title + '." ' + link), 
+        3 : str('"' + title + '" happens on ' + date + '. Register now: ' + link), 
+        4 : str('Sign up for "' + title + '," ' + date + '. Register at this link: ' + link), 
+        5 : str('Join us for "' + title + '" on ' + date + '. Sign up at ' + link), 
+        6 : str('Register now for "' + title + '," ' + date + ': ' + link)
+        }
+        
+        # Random message
+        seed = random.randint(0, 6)
+        line = message_dict[seed]
+        print line
+        ########## TO DO: FOR THE CASES WITH MORE THAN ONE WORKSHOP, INVOKE SLEEP ##########
+        #twitter_message(line)
 
 
 
