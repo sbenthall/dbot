@@ -1,6 +1,6 @@
-import urllib2, bs4, datetime, random
-import ConfigParser, time, re, math, itertools, logging, os
+import urllib2, bs4, datetime, random, ConfigParser, re, math, itertools, logging, os
 from twitter import Twitter, OAuth
+from time import sleep
 import pandas as pd
 import dateutil.parser as parser
 
@@ -88,35 +88,40 @@ def main():
     df = df.drop_duplicates(subset = ['title', 'date0', 'date1', 'date2', 'date3', 'date4'])
 
     # DataFrame: subset only records n days in the future
-    forward_days = 2
+    forward_days = 7
     df = df[df['date'] == datetime.date.today() + datetime.timedelta(days=forward_days)].reset_index(drop=True)
 
-    # Message variables & dict
-    for i in df.title.index:
-        title = df['title'][i]
-        date = df['date'][i].strftime('%m/%d')
-        link = df['url'][i]
-        
-        # Create dictionary
-        message_dict = {
-        0 : str('Don\'t miss "' + title + '" happening on ' + date + '. Sign up now: ' + link), 
-        1 : str('Register for our upcoming workshop, "' + title + '." ' + link), 
-        2 : str('"' + title + '" happens on ' + date + '. Register now: ' + link), 
-        3 : str('Sign up for "' + title + '," ' + date + '. Register at this link: ' + link), 
-        4 : str('Join us for "' + title + '" on ' + date + '. Sign up at ' + link), 
-        5 : str('Register now for "' + title + '," ' + date + ': ' + link)
-        }
-        
-        # Check message length, link always at most 22 chars
-        # What if no spaces? Should not happen, but still
-        line = ''
-        while line == '':
-            # Random message
-            seed = random.randint(0, 5)
-            if len(message_dict[seed][:message_dict[seed].rfind(' ') + 1]) <= 140:
-                line = message_dict[seed]
-                ########## TO DO: FOR THE CASES WITH MORE THAN ONE WORKSHOP, INVOKE SLEEP ##########
-                #twitter_message(line)
+    # DataFrame: proceed if events exist n days in the future
+    if len(df) == 0:
+        pass
+    else:
+        # Message variables & dict
+        for i in df.title.index:
+            title = df['title'][i]
+            date = df['date'][i].strftime('%m/%d')
+            link = df['url'][i]
+
+            # Create dictionary
+            message_dict = {
+            0 : str('Don\'t miss "' + title + '" happening on ' + date + '. Sign up now: ' + link), 
+            1 : str('Register for our upcoming workshop, "' + title + '." ' + link), 
+            2 : str('"' + title + '" happens on ' + date + '. Register now: ' + link), 
+            3 : str('Sign up for "' + title + '," ' + date + '. Register at this link: ' + link), 
+            4 : str('Join us for "' + title + '" on ' + date + '. Sign up at ' + link), 
+            5 : str('Register now for "' + title + '," ' + date + ': ' + link)
+            }
+
+            # Check message length, link always at most 22 chars
+            # What if no spaces? Should not happen, but still
+            line = ''
+            while line == '':
+                # Random message
+                seed = random.randint(0, 5)
+                if len(message_dict[seed][:message_dict[seed].rfind(' ') + 23]) <= 140:
+                    line = message_dict[seed]
+            twitter_message(line)
+            n_seconds = random.randint(60, 300) * 60
+            sleep(n_seconds)
 
 
 
