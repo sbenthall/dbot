@@ -1,4 +1,4 @@
-import urllib2, bs4, datetime, random, ConfigParser, re, math, itertools, logging, os
+import urllib2, bs4, datetime, random, ConfigParser, os
 from twitter import Twitter, OAuth
 from time import sleep
 import pandas as pd
@@ -32,10 +32,10 @@ def df_dates(df):
     for item in df.url.index:
         if df.title[item] != 'Training Archive':
             event_url = df.url[item]
-            test_page = bs4.BeautifulSoup(urllib2.urlopen(event_url))
+            event_page = bs4.BeautifulSoup(urllib2.urlopen(event_url))
 
             # Pull content
-            content = test_page.find_all('div', class_ = 'span9')
+            content = event_page.find_all('div', class_ = 'span9')
             date_info = content[0].find_all('span', class_ = 'date-display-single')
 
             # Date: handles multiple-entries
@@ -91,11 +91,10 @@ def main():
     forward_days = 7
     df = df[df['date'] == datetime.date.today() + datetime.timedelta(days=forward_days)].reset_index(drop=True)
 
-    # DataFrame: proceed if events exist n days in the future
-    if len(df) == 0:
-        pass
-    else:
-        # Message variables & dict
+    # If any events exist n days in the future
+    if len(df) != 0:
+
+        # For each event
         for i in df.title.index:
             title = df['title'][i]
             date = df['date'][i].strftime('%m/%d')
@@ -111,17 +110,25 @@ def main():
             5 : str('Register now for "' + title + '," ' + date + ': ' + link)
             }
 
-            # Check message length, link always at most 22 chars
-            # What if no spaces? Should not happen, but still
+            # Randomly select a message
+            # Check total length
+            # If at or below 140, post to Twitter
+            # Otherwise, select another
+            # Keep track of attempted messages
+            # If all messages exausted, exit
             line = ''
-            while line == '':
-                # Random message
-                seed = random.randint(0, 5)
+            message_seeds = []
+            while line == '' and len(message_seeds) != len(message_dict):
+                seed = random.randint(0, len(message_dict) - 1)
+                message_seeds.append(seed)
+                message_seeds = list(set(message_seeds))
                 if len(message_dict[seed][:message_dict[seed].rfind(' ') + 23]) <= 140:
                     line = message_dict[seed]
-            twitter_message(line)
-            n_seconds = random.randint(60, 300) * 60
-            sleep(n_seconds)
+
+            if line != '':
+                n_seconds = random.randint(60, 300) * 60
+                sleep(n_seconds)
+                twitter_message(line)
 
 
 
