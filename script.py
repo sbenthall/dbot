@@ -59,7 +59,7 @@ def first_date(df):
 
 def twitter_message(line):
     config= ConfigParser.ConfigParser()
-    config.read('/Users/JS/Code/DLab/config.cfg')
+    config.read('config/config.cfg')
 
     oauth = OAuth(config.get('OAuth','accesstoken'),
                   config.get('OAuth','accesstokenkey'),
@@ -88,7 +88,7 @@ def main():
     df = df.drop_duplicates(subset = ['title', 'date0', 'date1', 'date2', 'date3', 'date4'])
 
     # DataFrame: subset only records n days in the future
-    forward_days = 7
+    forward_days = 5
     df = df[df['date'] == datetime.date.today() + datetime.timedelta(days=forward_days)].reset_index(drop=True)
 
     # If any events exist n days in the future
@@ -125,10 +125,14 @@ def main():
                 if len(message_dict[seed][:message_dict[seed].rfind(' ') + 23]) <= 140:
                     line = message_dict[seed]
 
+            # Post message
             if line != '':
+                twitter_message(line)
+
+            # Sleep 1 and 5 hours (in minutes) between tweets
+            if i < len(df) - 1:
                 n_seconds = random.randint(60, 300) * 60
                 sleep(n_seconds)
-                twitter_message(line)
 
 
 
