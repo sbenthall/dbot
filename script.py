@@ -7,7 +7,7 @@ import dateutil.parser as parser
 
 def load_rss(user_rss):
     rss = user_rss
-    rss_data = bs4.BeautifulSoup(urllib2.urlopen(rss).read())
+    rss_data = bs4.BeautifulSoup(urllib2.urlopen(rss).read(), 'xml')
     return rss_data.find_all('item')
 
 
