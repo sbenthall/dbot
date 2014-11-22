@@ -15,7 +15,7 @@ def df_rss(items):
     title_list = []
     url_list = []
     for item in items:
-        if int(item.find_next('pubdate').text[12:17]) > 2013:
+        if int(item.find_next('pubDate').text[12:17]) > 2013:
             title_list.append(item.find_next('title').text)
             url_list.append(item.find_next('link').text)
 
@@ -32,7 +32,7 @@ def df_dates(df):
     for item in df.url.index:
         if df.title[item] != 'Training Archive':
             event_url = df.url[item]
-            event_page = bs4.BeautifulSoup(urllib2.urlopen(event_url))
+            event_page = bs4.BeautifulSoup(urllib2.urlopen(event_url), 'xml')
 
             # Pull content
             content = event_page.find_all('div', class_ = 'span9')
